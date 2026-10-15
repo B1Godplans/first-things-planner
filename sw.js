@@ -1,6 +1,6 @@
 // First Things Planner: offline support. Serves the app from the iPad's cache.
 // It never sends your entries anywhere; entries live in the iPad's local storage.
-const CACHE = "first-things-v1";
+const CACHE = "first-things-v2";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
