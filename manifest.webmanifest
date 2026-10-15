@@ -1,0 +1,16 @@
+{
+  "name": "First Things Planner",
+  "short_name": "First Things",
+  "description": "A private daily, weekly and life-vision planner that lives on your iPad.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ECF0EA",
+  "theme_color": "#1B2621",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

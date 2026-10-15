@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="First Things">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ECF0EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111714" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>First Things Planner</title>
+<style>
+/* Layout: a field-journal planner. Left rail on iPad, bottom tabs on iPhone, one calm writing column. */
+:root{
+  --bg:#ECF0EA; --surface:#F8FAF6; --sunk:#E1E7DF; --ink:#1B2621; --muted:#58685F; --faint:#8A978F; --line:#CDD6CC;
+  --accent:#8A5E17; --accent-soft:#F0E3C9; --accent-ink:#FFFFFF;
+  --t1:#AE3D2A; --t2:#8A5E17; --t3:#2B5B84; --t4:#4C7560;
+  --t1-soft:#F6DDD7; --t2-soft:#F0E3C9; --t3-soft:#DCE7F1; --t4-soft:#DDEAE1;
+  --good:#2F7049; --good-soft:#D6EBDD; --warn:#9C6A12; --bad:#AE3D2A;
+  --display:"Avenir Next","Avenir",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --ui:-apple-system,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  --serif:"Iowan Old Style","Palatino","Book Antiqua",Georgia,serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111714; --surface:#19211D; --sunk:#222C27; --ink:#E3EAE4; --muted:#9DABA3; --faint:#728078; --line:#2D3833;
+    --accent:#D6A653; --accent-soft:#3A2F1C; --accent-ink:#1A1408;
+    --t1:#E57A64; --t2:#D6A653; --t3:#7EAEDB; --t4:#8DBB9E;
+    --t1-soft:#3D2420; --t2-soft:#3A2F1C; --t3-soft:#1E2E3D; --t4-soft:#1F3127;
+    --good:#73C08F; --good-soft:#1E3326; --warn:#D9A24A; --bad:#E57A64;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111714; --surface:#19211D; --sunk:#222C27; --ink:#E3EAE4; --muted:#9DABA3; --faint:#728078; --line:#2D3833;
+  --accent:#D6A653; --accent-soft:#3A2F1C; --accent-ink:#1A1408;
+  --t1:#E57A64; --t2:#D6A653; --t3:#7EAEDB; --t4:#8DBB9E;
+  --t1-soft:#3D2420; --t2-soft:#3A2F1C; --t3-soft:#1E2E3D; --t4-soft:#1F3127;
+  --good:#73C08F; --good-soft:#1E3326; --warn:#D9A24A; --bad:#E57A64;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+:root{color-scheme:light;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--ui);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:flex;min-height:100%}
+.rail{display:none}
+.main{flex:1;min-width:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px calc(88px + env(safe-area-inset-bottom,0px))}
+.col{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+/* bottom tabs (phone) */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.tab{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:8px;color:var(--muted);font-size:11.5px;font-weight:600;letter-spacing:.02em}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+@media (min-width:760px){
+  .tabs{display:none}
+  .rail{display:flex;flex-direction:column;gap:4px;position:sticky;top:env(safe-area-inset-top,0px);height:100vh;max-height:100vh;width:212px;flex:none;
+    padding:22px 12px 22px max(16px,env(safe-area-inset-left,0px));border-right:1px solid var(--line);background:var(--surface)}
+  .rail .brand{font-family:var(--display);font-weight:700;font-size:21px;letter-spacing:-.01em;line-height:1.15;padding:0 10px 18px}
+  .rail .brand small{display:block;font-family:var(--ui);font-weight:500;font-size:12px;color:var(--muted);letter-spacing:.04em;margin-top:4px}
+  .rail .tab{flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;padding:10px 12px;letter-spacing:0}
+  .rail .tab[aria-current="page"]{background:var(--accent-soft)}
+  .rail .status{margin-top:auto;padding:0 10px}
+  .main{padding-block:28px 48px}
+  .phone-status{display:none}
+}
+
+/* type */
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:30px;line-height:1.1;font-weight:700}
+h2{font-size:21px;font-weight:700}
+h3{font-size:16.5px;font-weight:700}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.small{font-size:13.5px}
+.num{font-variant-numeric:tabular-nums}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 16px}
+.top .when{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pager{display:flex;align-items:center;gap:6px}
+.icon-btn{width:40px;height:40px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--ink)}
+.icon-btn svg{width:18px;height:18px}
+.chip-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px}
+.chip-btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.date-input{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:16px;max-width:170px}
+.phone-status{font-size:12.5px;color:var(--muted)}
+
+/* score strip */
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.score div{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;min-width:0}
+.score b{display:block;font-family:var(--display);font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
+.score span{font-size:12.5px;color:var(--muted)}
+
+/* inspiration */
+.word{border-left:3px solid var(--accent);padding:4px 0 4px 16px;display:flex;flex-direction:column;gap:6px}
+.word q{font-family:var(--serif);font-size:20px;line-height:1.4;quotes:none}
+.word .src{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.02em}
+.word .apply{font-size:14px;color:var(--muted)}
+.epi{font-family:var(--serif);font-style:italic;font-size:15.5px;color:var(--muted);line-height:1.45}
+.epi cite{font-style:normal;font-family:var(--ui);font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--accent);margin-left:6px}
+
+/* sections */
+.sec{display:flex;flex-direction:column;gap:14px}
+.sec-head{display:flex;flex-direction:column;gap:4px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.sec-head .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14.5px}
+.hint{font-size:13px;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+
+textarea,input[type=text],input[type=number],input[type=date],input[type=time],select{
+  width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 11px;font-size:16px;min-width:0}
+textarea{resize:none;overflow:hidden;font-family:var(--serif);font-size:17.5px;line-height:1.45;display:block}
+textarea::placeholder,input::placeholder{color:var(--faint)}
+textarea.big{min-height:84px}
+input[type=number]{font-variant-numeric:tabular-nums}
+.panel textarea,.panel input,.panel select{background:var(--bg)}
+
+/* growing lists */
+.list{display:flex;flex-direction:column;gap:6px}
+.list .row{display:flex;gap:8px;align-items:flex-start}
+.list.numbered{counter-reset:n}
+.list.numbered .row::before{counter-increment:n;content:counter(n);font-family:var(--display);font-weight:700;color:var(--accent);width:18px;flex:none;padding-top:10px;text-align:right;font-variant-numeric:tabular-nums}
+.list .row:last-child textarea{border-style:dashed}
+.check{appearance:none;-webkit-appearance:none;flex:none;width:26px;height:26px;margin-top:8px;border:2px solid var(--line);border-radius:7px;background:var(--surface);display:grid;place-items:center}
+.check:checked{background:var(--good);border-color:var(--good)}
+.check:checked::after{content:"";width:7px;height:12px;border:solid var(--surface);border-width:0 2.5px 2.5px 0;transform:translateY(-1px) rotate(45deg)}
+.done textarea{text-decoration:line-through;color:var(--muted)}
+
+/* tasks */
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.tier{border:0;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:700;letter-spacing:.03em;white-space:nowrap;flex:none}
+.tier.t1{background:var(--t1-soft);color:var(--t1)} .tier.t2{background:var(--t2-soft);color:var(--t2)}
+.tier.t3{background:var(--t3-soft);color:var(--t3)} .tier.t4{background:var(--t4-soft);color:var(--t4)}
+.legend .tier{cursor:default}
+.task{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:start;padding:8px 10px 8px 8px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);border-left-width:4px}
+.task.t1{border-left-color:var(--t1)} .task.t2{border-left-color:var(--t2)} .task.t3{border-left-color:var(--t3)} .task.t4{border-left-color:var(--t4)}
+.task .check{margin-top:6px}
+.task textarea{border:0;background:transparent;padding:6px 2px}
+.task .meta{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.task .meta select{width:auto;max-width:100%;font-size:14px;padding:4px 8px;border-radius:999px;background:var(--bg);color:var(--muted)}
+.task.blank{border-style:dashed;border-left-style:solid}
+.tasklist{display:flex;flex-direction:column;gap:8px}
+.tier-help{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.tier-help div{font-size:13px;color:var(--muted);line-height:1.4}
+.tier-help b{display:block;font-size:13px}
+
+/* disciplines */
+.disc{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.disc .panel{gap:8px}
+.disc-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.met{font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--sunk);color:var(--muted)}
+.met.on{background:var(--good-soft);color:var(--good)}
+.inline{display:flex;gap:8px;align-items:center}
+.inline input[type=number]{width:96px}
+.inline label{font-size:13.5px;color:var(--muted)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pair label{font-size:12.5px;color:var(--muted);display:block;margin-bottom:3px}
+.dots{display:flex;gap:6px}
+.dot{width:34px;height:34px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg);font-weight:700;font-size:13px;color:var(--muted)}
+.dot.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:34px;height:34px;border-radius:999px;border:1px solid var(--line);background:var(--bg);font-size:18px;line-height:1}
+.stepper b{min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
+
+/* segmented & chips */
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px}
+.seg button.on.yes{background:var(--good);border-color:var(--good);color:var(--surface)}
+.seg button.on.partly{background:var(--warn);border-color:var(--warn);color:var(--surface)}
+.seg button.on.no{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;text-align:left}
+.chip.on{background:var(--t1-soft);border-color:var(--t1);color:var(--t1);font-weight:600}
+.chip.add{border-style:dashed;color:var(--muted)}
+
+/* notices */
+.note{background:var(--accent-soft);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:8px}
+.note .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* week */
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.daycell{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;font-variant-numeric:tabular-nums;min-width:0}
+.daycell .dn{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.daycell .dd{font-family:var(--display);font-weight:700;font-size:19px}
+.daycell .sm{font-size:11.5px;color:var(--muted)}
+.daycell.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{width:10px;height:10px;border-radius:999px;background:var(--sunk)}
+.mark.yes{background:var(--good)} .mark.partly{background:var(--warn)} .mark.no{background:var(--bad)}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.saw{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+
+/* goals */
+.htabs{display:flex;gap:6px;flex-wrap:wrap}
+.htabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px}
+.htabs button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.htabs .c{font-variant-numeric:tabular-nums;opacity:.7;margin-left:4px}
+.goal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.goal>button.gsum{width:100%;background:none;border:0;text-align:left;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center}
+.goal .gt{font-family:var(--display);font-weight:700;font-size:16.5px;min-width:0;overflow-wrap:anywhere}
+.goal .gm{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:var(--muted)}
+.bar{height:6px;border-radius:999px;background:var(--sunk);overflow:hidden;grid-column:1/-1}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.goal .pct{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;color:var(--accent)}
+.goal .gbody{padding:4px 14px 14px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.danger{border:1px solid var(--line);background:none;border-radius:999px;padding:7px 14px;font-size:13.5px;color:var(--bad);font-weight:600}
+.danger.armed{background:var(--bad);color:var(--surface);border-color:var(--bad)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.status-done .gt{text-decoration:line-through;text-decoration-color:var(--good)}
+
+/* growth */
+.track{display:flex;flex-direction:column;gap:8px}
+.trow{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:center}
+.trow .tl{font-weight:600;font-size:14px}
+.cells{display:grid;grid-template-columns:repeat(30,minmax(0,1fr));grid-auto-rows:16px;gap:2px;align-items:stretch}
+.cell{display:block;border-radius:3px;background:var(--sunk)}
+.cell.part{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.cell.met{background:var(--good)}
+.cell.yes{background:var(--good)} .cell.partly{background:var(--warn)} .cell.no{background:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.stats div{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+.stats b{display:block;font-family:var(--display);font-size:20px;font-variant-numeric:tabular-nums}
+.stats span{font-size:12.5px;color:var(--muted)}
+.targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.targets label{font-size:13px;color:var(--muted);display:block;margin-bottom:3px}
+.legend-row{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);align-items:center}
+.legend-row i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* wisdom */
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.wlist{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.wcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:8px}
+.wcard q{font-family:var(--serif);font-size:18px;line-height:1.45;quotes:none}
+.wcard .src{font-size:12.5px;font-weight:700;color:var(--accent);letter-spacing:.03em}
+.wcard .apply{font-size:14px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+.wcard .kind{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+
+.status-pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+.status-pill i{width:8px;height:8px;border-radius:999px;background:var(--faint)}
+.status-pill.ok i{background:var(--good)} .status-pill.busy i{background:var(--warn)} .status-pill.err i{background:var(--bad)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
+@media (min-width:760px){.toast{bottom:24px}}
+@media (prefers-reduced-motion:no-preference){.goal .bar i{transition:width .3s ease}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="rail" aria-label="Sections">
+    <div class="brand">First Things<small>Planner</small></div>
+    <div id="railTabs"></div>
+    <div class="status"><span class="status-pill" id="status1"><i></i><span>Starting…</span></span></div>
+  </nav>
+  <main class="main" id="main"></main>
+</div>
+<nav class="tabs" id="tabs" aria-label="Sections"></nav>
+<div class="toast" id="toast" hidden></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+"use strict";
+/* ---------------- content: wisdom ---------------- */
+const WISDOM = [
+ // Jesus (King James Version)
+ {s:"Jesus",r:"Matthew 6:33",t:"But seek ye first the kingdom of God, and his righteousness; and all these things shall be added unto you.",a:"Before anything else today, what does seeking God first look like in your first hour?"},
+ {s:"Jesus",r:"Matthew 6:34",t:"Take therefore no thought for the morrow: for the morrow shall take thought for the things of itself. Sufficient unto the day is the evil thereof.",a:"Plan for tomorrow, then leave it. Give today your full attention."},
+ {s:"Jesus",r:"Luke 14:28",t:"For which of you, intending to build a tower, sitteth not down first, and counteth the cost, whether he have sufficient to finish it?",a:"Pick one goal and write the real cost: time, money, and what you will say no to."},
+ {s:"Jesus",r:"Luke 16:10",t:"He that is faithful in that which is least is faithful also in much: and he that is unjust in the least is unjust also in much.",a:"Do one small thing today with full faithfulness, even if no one sees it."},
+ {s:"Jesus",r:"Mark 1:35",t:"And in the morning, rising up a great while before day, he went out, and departed into a solitary place, and there prayed.",a:"Guard a quiet place and time for prayer before the day's noise begins."},
+ {s:"Jesus",r:"Matthew 7:24",t:"Therefore whosoever heareth these sayings of mine, and doeth them, I will liken him unto a wise man, which built his house upon a rock.",a:"Knowing is not enough. What will you put into practice today?"},
+ {s:"Jesus",r:"John 15:5",t:"I am the vine, ye are the branches: He that abideth in me, and I in him, the same bringeth forth much fruit: for without me ye can do nothing.",a:"Fruit comes from staying connected. Schedule your time with God like your most important meeting."},
+ {s:"Jesus",r:"Matthew 5:16",t:"Let your light so shine before men, that they may see your good works, and glorify your Father which is in heaven.",a:"Whose day can you make better through your work today?"},
+ {s:"Jesus",r:"Matthew 7:7",t:"Ask, and it shall be given you; seek, and ye shall find; knock, and it shall be opened unto you.",a:"Name one door you need to knock on this week, and knock."},
+ {s:"Jesus",r:"Luke 9:62",t:"No man, having put his hand to the plough, and looking back, is fit for the kingdom of God.",a:"Finish what you started before you start something new."},
+ {s:"Jesus",r:"Matthew 11:28",t:"Come unto me, all ye that labour and are heavy laden, and I will give you rest.",a:"Rest is part of the plan. Protect your sleep tonight."},
+ {s:"Jesus",r:"Matthew 20:26",t:"But whosoever will be great among you, let him be your minister.",a:"Add one act of service to today's priorities."},
+ {s:"Jesus",r:"Luke 2:52",t:"And Jesus increased in wisdom and stature, and in favour with God and man.",a:"Grow in all four: mind (study), body (health), spirit (prayer), and relationships."},
+ {s:"Jesus",r:"Matthew 26:41",t:"Watch and pray, that ye enter not into temptation: the spirit indeed is willing, but the flesh is weak.",a:"Know your drift signals and plan around them before they show up."},
+ {s:"Jesus",r:"Mark 6:31",t:"Come ye yourselves apart into a desert place, and rest a while.",a:"Plan a pause today, even ten minutes, to step away and reset."},
+ {s:"Jesus",r:"John 9:4",t:"I must work the works of him that sent me, while it is day: the night cometh, when no man can work.",a:"Your Essential tasks deserve your best hours. Do them while it is day."},
+ // Solomon (King James Version)
+ {s:"Solomon",r:"Proverbs 3:5–6",t:"Trust in the LORD with all thine heart; and lean not unto thine own understanding. In all thy ways acknowledge him, and he shall direct thy paths.",a:"Commit today's plan to God, then hold it with an open hand."},
+ {s:"Solomon",r:"Proverbs 16:3",t:"Commit thy works unto the LORD, and thy thoughts shall be established.",a:"Pray over your top three priorities before you begin them."},
+ {s:"Solomon",r:"Proverbs 16:9",t:"A man's heart deviseth his way: but the LORD directeth his steps.",a:"Make the plan. Then watch for where God redirects it."},
+ {s:"Solomon",r:"Proverbs 21:5",t:"The thoughts of the diligent tend only to plenteousness; but of every one that is hasty only to want.",a:"Slow down enough to plan. Haste costs more than planning does."},
+ {s:"Solomon",r:"Proverbs 12:24",t:"The hand of the diligent shall bear rule: but the slothful shall be under tribute.",a:"Diligence compounds. Which small daily habit will you keep today?"},
+ {s:"Solomon",r:"Proverbs 29:18",t:"Where there is no vision, the people perish: but he that keepeth the law, happy is he.",a:"Read your life vision today. Does your schedule match it?"},
+ {s:"Solomon",r:"Proverbs 4:23",t:"Keep thy heart with all diligence; for out of it are the issues of life.",a:"Guard what you let into your mind today: media, conversations, worries."},
+ {s:"Solomon",r:"Proverbs 4:25–26",t:"Let thine eyes look right on, and let thine eyelids look straight before thee. Ponder the path of thy feet, and let all thy ways be established.",a:"Focus means saying no. What will you not do today?"},
+ {s:"Solomon",r:"Proverbs 6:6",t:"Go to the ant, thou sluggard; consider her ways, and be wise.",a:"Small, steady work in season. What can you prepare now for a later need?"},
+ {s:"Solomon",r:"Proverbs 15:22",t:"Without counsel purposes are disappointed: but in the multitude of counsellers they are established.",a:"Who could give you wise counsel on your biggest goal? Reach out this week."},
+ {s:"Solomon",r:"Proverbs 27:17",t:"Iron sharpeneth iron; so a man sharpeneth the countenance of his friend.",a:"Share one goal with someone who will hold you to it."},
+ {s:"Solomon",r:"Proverbs 22:29",t:"Seest thou a man diligent in his business? he shall stand before kings; he shall not stand before mean men.",a:"Do your work today with excellence, as if presenting it to a king."},
+ {s:"Solomon",r:"Proverbs 13:20",t:"He that walketh with wise men shall be wise: but a companion of fools shall be destroyed.",a:"Who are you spending time with this week, and are they moving you toward your vision?"},
+ {s:"Solomon",r:"Proverbs 24:16",t:"For a just man falleth seven times, and riseth up again.",a:"A missed day is not a lost week. Start again now."},
+ {s:"Solomon",r:"Proverbs 27:1",t:"Boast not thyself of to morrow; for thou knowest not what a day may bring forth.",a:"Don't wait for a better day to begin. Begin with today."},
+ {s:"Solomon",r:"Ecclesiastes 3:1",t:"To every thing there is a season, and a time to every purpose under the heaven.",a:"What season are you in? Let your goals fit it."},
+ {s:"Solomon",r:"Ecclesiastes 9:10",t:"Whatsoever thy hand findeth to do, do it with thy might.",a:"Give your full effort to the task in front of you, then move on."},
+ {s:"Solomon",r:"Proverbs 23:7",t:"For as he thinketh in his heart, so is he.",a:"Write today's affirmation as something you believe, not just something you hope."},
+ {s:"Solomon",r:"Proverbs 13:11",t:"Wealth gotten by vanity shall be diminished: but he that gathereth by labour shall increase.",a:"Steady effort beats shortcuts. What will you add to the pile today?"},
+ {s:"Solomon",r:"Proverbs 25:28",t:"He that hath no rule over his own spirit is like a city that is broken down, and without walls.",a:"Self-control is a wall around your goals. Where do you need it most today?"},
+ {s:"Solomon",r:"Proverbs 20:13",t:"Love not sleep, lest thou come to poverty; open thine eyes, and thou shalt be satisfied with bread.",a:"Rise on time. A good morning starts the night before."},
+ {s:"Solomon",r:"Proverbs 3:24",t:"When thou liest down, thou shalt not be afraid: yea, thou shalt lie down, and thy sleep shall be sweet.",a:"Hand tomorrow's worries to God before bed, and write them down so you can rest."},
+ {s:"Solomon",r:"Proverbs 17:22",t:"A merry heart doeth good like a medicine: but a broken spirit drieth the bones.",a:"Gratitude feeds a merry heart. Write three things down this morning."},
+ {s:"Solomon",r:"Ecclesiastes 4:9",t:"Two are better than one; because they have a good reward for their labour.",a:"Who can you partner with to reach a goal faster?"},
+ // John C. Maxwell: principles, summarized
+ {s:"Maxwell",r:"Today Matters",k:"Principle",t:"Success is built in your daily agenda. What you do today, repeated over time, decides who you become.",a:"Look at today's plan. If you repeated it for a year, where would it take you?"},
+ {s:"Maxwell",r:"Today Matters",k:"Principle",t:"The Daily Dozen: make good decisions once, then manage them daily. Attitude, priorities, health, family, thinking, commitment, finances, faith, relationships, generosity, values and growth.",a:"Which of the twelve needs your attention most today?"},
+ {s:"Maxwell",r:"The 15 Invaluable Laws of Growth",k:"Law of Intentionality",t:"Growth doesn't just happen. You have to plan it and pursue it on purpose.",a:"Put your study time on today's list like an appointment."},
+ {s:"Maxwell",r:"The 15 Invaluable Laws of Growth",k:"Law of Consistency",t:"Motivation gets you going, but discipline keeps you growing. Small habits repeated beat big bursts.",a:"Check your Growth page. Which streak can you protect today?"},
+ {s:"Maxwell",r:"The 15 Invaluable Laws of Growth",k:"Law of Reflection",t:"Learning to pause lets growth catch up with you. Experience becomes wisdom only when you reflect on it.",a:"Don't skip tonight's review. That's where the lesson is."},
+ {s:"Maxwell",r:"The 15 Invaluable Laws of Growth",k:"Law of the Rubber Band",t:"Growth stops when you lose the tension between where you are and where you could be.",a:"Re-read your long-range goals. Feel the stretch again."},
+ {s:"Maxwell",r:"The 15 Invaluable Laws of Growth",k:"Law of Trade-Offs",t:"You have to give up something to go up. Every new level costs a comfort from the old one.",a:"What is one thing you'll give up this week to make room for your goal?"},
+ {s:"Maxwell",r:"The 21 Irrefutable Laws of Leadership",k:"Law of the Lid",t:"Your ability to lead sets a ceiling on how effective you can be. Raise your leadership and you raise the lid.",a:"What skill, if you grew it, would lift everything else?"},
+ {s:"Maxwell",r:"The 21 Irrefutable Laws of Leadership",k:"Law of Process",t:"Leadership develops daily, not in a day.",a:"Count today as one brick. Lay it well."},
+ // Stephen R. Covey: principles, summarized
+ {s:"Covey",r:"The 7 Habits of Highly Effective People",k:"Habit 1 · Be Proactive",t:"Between what happens to you and how you respond, there is a space to choose. Spend your energy on what you can influence.",a:"Name one worry you can't control. Let it go and act on something you can."},
+ {s:"Covey",r:"The 7 Habits of Highly Effective People",k:"Habit 2 · Begin with the End in Mind",t:"Write a personal mission statement and measure each day against it.",a:"Read your mission statement before you set today's priorities."},
+ {s:"Covey",r:"The 7 Habits of Highly Effective People",k:"Habit 3 · Put First Things First",t:"Plan your week around what matters most, then fit everything else around it.",a:"Put your Essential tasks on the calendar before anything else."},
+ {s:"Covey",r:"First Things First",k:"Quadrant II",t:"The most valuable work is important but not urgent: planning, prevention, relationships and renewal. It never shouts, so it has to be scheduled.",a:"Mark at least one Essential task today, and do it before the urgent ones take over."},
+ {s:"Covey",r:"First Things First",k:"Big Rocks",t:"Put the big rocks in the jar first. If the sand and pebbles go in first, the big rocks won't fit.",a:"Set this week's big rocks for each of your roles."},
+ {s:"Covey",r:"The 7 Habits of Highly Effective People",k:"Habit 4 · Think Win-Win",t:"Look for solutions that are good for everyone involved, not just for you.",a:"In today's hardest conversation, ask what a win looks like for the other person."},
+ {s:"Covey",r:"The 7 Habits of Highly Effective People",k:"Habit 5 · Seek First to Understand",t:"Listen to understand before you try to be understood.",a:"In your next conversation, listen until you can repeat the other person's view."},
+ {s:"Covey",r:"The 7 Habits of Highly Effective People",k:"Habit 7 · Sharpen the Saw",t:"Renew yourself regularly in four areas: physical, mental, spiritual and social.",a:"Your disciplines are your saw-sharpening. Which one did you skip lately?"},
+ {s:"Covey",r:"First Things First",k:"Roles and Goals",t:"Plan by your roles each week, so no important part of your life gets crowded out.",a:"Give every role at least one big rock this week."}
+];
+const SOURCES=["Jesus","Solomon","Maxwell","Covey"];
+const SOURCE_LABEL={Jesus:"Jesus",Solomon:"Solomon",Maxwell:"John C. Maxwell",Covey:"Stephen R. Covey"};
+
+const TIERS=[null,
+ {n:"Urgent",d:"Must happen today. A real deadline or consequence."},
+ {n:"Essential",d:"Moves a goal forward. Important, not urgent. Protect time for these."},
+ {n:"Important",d:"Needs doing, but the timing can flex."},
+ {n:"Beneficial",d:"Good to do if time allows. Never before Essentials."}];
+
+const AREAS=["Faith","Family","Health","Mind","Work","Finances","Relationships","Service"];
+const HORIZONS=[
+ {k:"long",n:"Long range",span:"5–10 years",ph:"Where do you want to be in ten years?"},
+ {k:"mid",n:"Mid range",span:"1–3 years",ph:"What must be true in three years to get there?"},
+ {k:"short",n:"Short term",span:"Next 90 days",ph:"What will you finish in the next 90 days?"}];
+const DISC=[
+ {k:"study",n:"Study",u:"min"},{k:"prayer",n:"Prayer",u:"min"},{k:"diet",n:"Diet",u:"/5"},
+ {k:"exercise",n:"Exercise",u:"min"},{k:"sleep",n:"Sleep",u:"hrs"}];
+const DRIFT_SUGGEST=["Skipped my quiet time","Started the day without a plan","Did Beneficial tasks before Essentials","Lost time on my phone","Reacted in impatience or anger","Stayed up too late","Said yes to things outside my priorities","Ate on autopilot"];
+const ROLE_SUGGEST=["Disciple","Spouse","Parent","Author","Professional","Friend","Steward of my health"];
+
+/* ---------------- dates ---------------- */
+const pad=n=>String(n).padStart(2,"0");
+const fmt=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parseD=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return fmt(d)};
+const todayStr=()=>fmt(new Date());
+const mondayOf=s=>{const d=parseD(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return fmt(d)};
+function isoWeek(s){const d=parseD(s);const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=t.getUTCFullYear();const w=Math.ceil(((t-Date.UTC(y,0,1))/864e5+1)/7);return y+"-W"+pad(w)}
+const longDate=s=>parseD(s).toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+const shortDate=s=>parseD(s).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+const dayNum=s=>Math.floor(parseD(s).getTime()/864e5);
+
+/* ---------------- helpers ---------------- */
+const $=(s,r=document)=>r.querySelector(s);
+function h(tag,props,...kids){
+  const e=document.createElement(tag);
+  if(props) for(const [k,v] of Object.entries(props)){
+    if(v==null||v===false) continue;
+    if(k==="class") e.className=v;
+    else if(k==="text") e.textContent=v;
+    else if(k.startsWith("on")&&typeof v==="function") e.addEventListener(k.slice(2),v);
+    else if(k==="value"||k==="checked") e[k]=v;
+    else e.setAttribute(k,v===true?"":v);
+  }
+  for(const c of kids.flat()){ if(c==null||c===false) continue; e.append(c.nodeType?c:document.createTextNode(String(c))); }
+  return e;
+}
+function svg(path){const s=document.createElementNS("http://www.w3.org/2000/svg","svg");s.setAttribute("viewBox","0 0 24 24");s.setAttribute("fill","none");s.setAttribute("stroke","currentColor");s.setAttribute("stroke-width","1.8");s.setAttribute("stroke-linecap","round");s.setAttribute("stroke-linejoin","round");s.setAttribute("aria-hidden","true");s.innerHTML=path;return s}
+const ICONS={
+ today:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+ week:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ goals:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+ growth:'<path d="M12 21v-9"/><path d="M12 12c0-4 3-7 8-7 0 5-3 8-8 7z"/><path d="M12 14c0-3-2.5-5.5-7-5.5 0 4 2.5 6 7 5.5z"/>',
+ wisdom:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>',
+ left:'<path d="M15 18l-6-6 6-6"/>', right:'<path d="M9 18l6-6-6-6"/>'};
+function getPath(o,p){for(const k of p){if(o==null) return undefined;o=o[k]}return o}
+function setPath(o,p,v){for(let i=0;i<p.length-1;i++){const k=p[i];if(o[k]==null||typeof o[k]!=="object") o[k]=typeof p[i+1]==="number"?[]:{};o=o[k]}o[p[p.length-1]]=v}
+const clone=o=>JSON.parse(JSON.stringify(o));
+function mergeDefaults(def,data){
+  if(Array.isArray(def)) return Array.isArray(data)?data:def;
+  if(def&&typeof def==="object"){const out={};const src=(data&&typeof data==="object"&&!Array.isArray(data))?data:{};for(const k of Object.keys(def)) out[k]=mergeDefaults(def[k],src[k]);for(const k of Object.keys(src)) if(!(k in out)) out[k]=src[k];return out}
+  return data===undefined||data===null?def:data;
+}
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0};
+const uid=()=>Math.random().toString(36).slice(2,10);
+function autosize(t){t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"}
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
+function sleepHours(s){if(!s||!s.bed||!s.wake) return 0;const [bh,bm]=s.bed.split(":").map(Number),[wh,wm]=s.wake.split(":").map(Number);let m=(wh*60+wm)-(bh*60+bm);if(m<=0) m+=1440;return Math.round(m/6)/10}
+
+/* ---------------- document defaults ---------------- */
+function defFor(key){
+  if(key==="profile") return {kind:"profile",mission:"",becoming:"",values:[],roles:[],successDef:"",drift:[],targets:{study:30,prayer:20,exercise:30,sleep:7.5,water:8,diet:4}};
+  if(key==="goals") return {kind:"goals",items:[]};
+  if(key.startsWith("d-")) return {kind:"day",date:key.slice(2),gratitude:[],affirmation:"",success:"",tasks:[],
+    disc:{study:{min:"",note:""},prayer:{min:"",note:""},diet:{rating:0,water:0,note:""},exercise:{min:"",type:""},sleep:{bed:"",wake:"",quality:0}},
+    review:{met:"",wins:[],driftHit:[],drift:"",lesson:"",tomorrow:""}};
+  if(key.startsWith("w-")) return {kind:"week",week:key.slice(2),rocks:{},saw:{physical:"",mental:"",spiritual:"",social:""},review:{well:"",improve:"",focus:""}};
+  return {};
+}
+const stripMeta=o=>{const c={...o};delete c.updatedAt;return JSON.stringify(c)};
+
+/* ---------------- store: private cloud sync with on-device copy ---------------- */
+const S={mode:"local",db:null,base:"",cache:{},subs:{},ver:{},writing:{},again:{},timers:{},failed:false,range:null,rangeUnsub:null};
+const LS="ftp1:";
+function lsGet(k){try{const v=localStorage.getItem(LS+k);return v?JSON.parse(v):null}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v))}catch(e){if(!lsSet.warned){lsSet.warned=true;setTimeout(()=>toast("Couldn't save on this iPad. Free up storage, then save a backup."),0)}}}
+function lsKeys(){const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(LS)) out.push(k.slice(LS.length))}}catch(e){}return out}
+
+function doc(key){
+  if(!S.cache[key]){const m=lsGet(key);S.cache[key]=mergeDefaults(defFor(key),m?m.data:null)}
+  watch(key);
+  return S.cache[key];
+}
+function peekDay(date){const k="d-"+date;if(S.cache[k]) return S.cache[k];const m=lsGet(k);return m?mergeDefaults(defFor(k),m.data):null}
+
+function change(key,fn){
+  const d=S.cache[key]||doc(key);fn(d);
+  S.ver[key]=(S.ver[key]||0)+1;
+  lsSet(key,{data:d,synced:false,ts:Date.now()});
+  if(S.mode==="cloud") schedule(key,700);
+  localChanged(key);
+}
+function schedule(key,ms){clearTimeout(S.timers[key]);S.timers[key]=setTimeout(()=>{S.timers[key]=null;flush(key)},ms);setStatus()}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function flush(key){
+  if(S.mode!=="cloud") return;
+  if(S.writing[key]){S.again[key]=true;return}
+  S.writing[key]=true;setStatus();
+  const v=S.ver[key];const body=clone(S.cache[key]);body.updatedAt=Date.now();
+  const ref=S.db.collection(S.base).doc(key);
+  let ok=false;
+  try{await ref.set(body);ok=true}catch(e){
+    if(e&&e.code==="unavailable"){await wait(700+Math.random()*1500);try{await ref.set(body);ok=true}catch(e2){}}
+  }
+  S.writing[key]=false;
+  if(ok){S.failed=false;if(S.ver[key]===v) lsSet(key,{data:S.cache[key],synced:true,ts:body.updatedAt})}
+  else S.failed=true;
+  if(S.again[key]||S.ver[key]!==v){S.again[key]=false;if(!S.timers[key]) schedule(key,400)}
+  setStatus();
+}
+function watch(key){
+  if(S.mode!=="cloud"||S.subs[key]) return;
+  const ref=S.db.collection(S.base).doc(key);
+  S.subs[key]=ref.onSnapshot(snap=>applyRemote(key,snap),()=>{delete S.subs[key]});
+}
+function applyRemote(key,snap){
+  if(snap.metadata&&snap.metadata.hasPendingWrites) return;
+  if(S.timers[key]||S.writing[key]) return;
+  const m=lsGet(key);
+  if(!snap.exists){ if(m&&m.synced===false) schedule(key,50); return; }
+  const data=snap.data();
+  if(m&&m.synced===false&&(m.ts||0)>(data.updatedAt||0)){schedule(key,50);return}
+  const merged=mergeDefaults(defFor(key),data);
+  if(S.cache[key]&&stripMeta(merged)===stripMeta(S.cache[key])) return;
+  S.cache[key]=merged;lsSet(key,{data:merged,synced:true,ts:data.updatedAt||0});
+  remoteChanged(key);
+}
+function keepSubs(keys){
+  for(const k of Object.keys(S.subs)){ if(!keys.includes(k)){try{S.subs[k]()}catch(e){} delete S.subs[k]} }
+}
+function watchRange(from,to){
+  const id=from+"_"+to;if(S.range===id) return;S.range=id;
+  if(S.rangeUnsub){try{S.rangeUnsub()}catch(e){} S.rangeUnsub=null}
+  if(S.mode!=="cloud") return;
+  const q=S.db.collection(S.base).where("kind","==","day").where("date",">=",from).where("date","<=",to);
+  S.rangeUnsub=q.onSnapshot(qs=>{let any=false;for(const ds of qs.docs){const key=ds.id;if(S.timers[key]||S.writing[key]) continue;const m=lsGet(key);const data=ds.data();if(m&&m.synced===false&&(m.ts||0)>(data.updatedAt||0)) continue;const merged=mergeDefaults(defFor(key),data);if(S.cache[key]&&stripMeta(merged)===stripMeta(S.cache[key])) continue;S.cache[key]=merged;lsSet(key,{data:merged,synced:true,ts:data.updatedAt||0});any=true}if(any) remoteChanged("range")},()=>{S.rangeUnsub=null;S.range=null});
+}
+function pendingCount(){let n=0;for(const k in S.timers) if(S.timers[k]) n++;for(const k in S.writing) if(S.writing[k]) n++;return n}
+function setStatus(){
+  let cls="",txt;
+  if(S.mode!=="cloud"){txt="Saved on this iPad";cls="ok"}
+  else if(pendingCount()){txt="Saving…";cls="busy"}
+  else if(S.failed){txt="Couldn't save. Will retry.";cls="err"}
+  else {txt="Synced to your account";cls="ok"}
+  for(const el of document.querySelectorAll(".status-pill")){el.className="status-pill "+cls;el.lastElementChild.textContent=txt}
+}
+
+/* ---------------- app state & rendering ---------------- */
+const state={view:"today",date:todayStr(),week:mondayOf(todayStr()),horizon:"short",openGoal:null,wfilter:"All"};
+try{const v=localStorage.getItem(LS+"ui:view");if(v&&["today","week","goals","growth","wisdom"].includes(v)) state.view=v;const hz=localStorage.getItem(LS+"ui:horizon");if(hz) state.horizon=hz}catch(e){}
+const main=$("#main");
+let pendingRender=false;
+function editing(){const a=document.activeElement;return a&&main.contains(a)&&a.matches("input,textarea,select")}
+function remoteChanged(){ if(editing()) pendingRender=true; else render(); }
+main.addEventListener("focusout",()=>setTimeout(()=>{if(pendingRender&&!editing()){pendingRender=false;render()}},60));
+const localHooks=[];
+function localChanged(key){for(const f of localHooks) try{f(key)}catch(e){}}
+
+function go(view){state.view=view;try{localStorage.setItem(LS+"ui:view",view)}catch(e){}render();window.scrollTo(0,0)}
+function navButtons(container,withText){
+  container.replaceChildren();
+  for(const [k,n] of [["today","Today"],["week","Week"],["goals","Vision & Goals"],["growth","Growth"],["wisdom","Wisdom"]]){
+    const label=(!withText&&k==="goals")?"Goals":n;
+    container.append(h("button",{class:"tab",type:"button","aria-current":state.view===k?"page":null,onclick:()=>go(k)},svg(ICONS[k]),h("span",{text:label})));
+  }
+}
+function render(){
+  localHooks.length=0;
+  navButtons($("#tabs"),false);navButtons($("#railTabs"),true);
+  const v=state.view;
+  const col=h("div",{class:"col"});
+  ({today:viewToday,week:viewWeek,goals:viewGoals,growth:viewGrowth,wisdom:viewWisdom})[v](col);
+  main.replaceChildren(col);
+  requestAnimationFrame(()=>main.querySelectorAll("textarea").forEach(autosize));
+  setStatus();
+}
+window.addEventListener("resize",()=>main.querySelectorAll("textarea").forEach(autosize));
+
+/* ---------- form building blocks ---------- */
+const fid=(key,path)=>(key+"-"+path.join("-")).replace(/[^a-zA-Z0-9_-]/g,"_");
+function area(key,path,ph,opts={}){
+  const d=doc(key);
+  const t=h("textarea",{id:fid(key,path),rows:opts.rows||1,class:opts.big?"big":null,placeholder:ph,value:getPath(d,path)||"","aria-label":opts.label||ph});
+  t.addEventListener("input",()=>{autosize(t);change(key,x=>setPath(x,path,t.value))});
+  return t;
+}
+function field(label,hint,control){const id=control.id;return h("div",{class:"field"},h("label",{for:id,text:label}),hint?h("div",{class:"hint",text:hint}):null,control)}
+function numInput(key,path,label,opts={}){
+  const d=doc(key);
+  const i=h("input",{type:"number",id:fid(key,path),inputmode:"decimal",min:"0",step:opts.step||"1",placeholder:opts.ph||"0",value:getPath(d,path)??"","aria-label":label});
+  i.addEventListener("input",()=>{change(key,x=>setPath(x,path,i.value===""?"":Number(i.value)));opts.after&&opts.after()});
+  return i;
+}
+function dots(key,path,n,label,after){
+  const d=doc(key);const wrap=h("div",{class:"dots",role:"group","aria-label":label});
+  const paint=()=>{const v=getPath(doc(key),path)||0;[...wrap.children].forEach((b,i)=>{b.classList.toggle("on",i<v);b.setAttribute("aria-pressed",String(i+1===v))})};
+  for(let i=1;i<=n;i++) wrap.append(h("button",{type:"button",class:"dot",text:String(i),"aria-label":label+" "+i+" of "+n,onclick:()=>{const cur=getPath(doc(key),path)||0;change(key,x=>setPath(x,path,cur===i?0:i));paint();after&&after()}}));
+  paint();return wrap;
+}
+/* A list that always keeps one empty line at the end, so it grows as you write. */
+function growList(key,path,ph,opts={}){
+  const wrap=h("div",{class:"list"+(opts.numbered?" numbered":"")});
+  const checked=!!opts.check;
+  const val=it=>checked?(it&&it.text)||"":it||"";
+  function row(item){
+    const t=h("textarea",{rows:1,placeholder:ph,value:val(item),"aria-label":ph});
+    const r=h("div",{class:"row"});
+    let cb=null;
+    if(checked){cb=h("input",{type:"checkbox",class:"check","aria-label":"Done",checked:!!(item&&item.done)});r.append(cb);r.classList.toggle("done",!!(item&&item.done))}
+    r.append(t);
+    const idx=()=>[...wrap.children].indexOf(r);
+    t.addEventListener("input",()=>{
+      autosize(t);const i=idx();const isLast=i===wrap.children.length-1;
+      change(key,x=>{let a=getPath(x,path);if(!Array.isArray(a)){a=[];setPath(x,path,a)}
+        if(i>=a.length) a.push(checked?{text:t.value,done:cb?cb.checked:false}:t.value);
+        else if(checked) a[i]={...a[i],text:t.value}; else a[i]=t.value;});
+      if(isLast&&t.value.trim()){wrap.append(row(null));opts.onGrow&&opts.onGrow()}
+    });
+    t.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();const nx=r.nextElementSibling;if(nx) nx.querySelector("textarea").focus()}});
+    t.addEventListener("blur",()=>{const i=idx();if(i<0) return;if(!t.value.trim()&&i<wrap.children.length-1){change(key,x=>{const a=getPath(x,path)||[];a.splice(i,1)});r.remove();opts.onGrow&&opts.onGrow()}});
+    if(cb) cb.addEventListener("change",()=>{const i=idx();r.classList.toggle("done",cb.checked);
+      change(key,x=>{let a=getPath(x,path);if(!Array.isArray(a)){a=[];setPath(x,path,a)}if(i<a.length) a[i]={...a[i],done:cb.checked};else if(t.value.trim()) a.push({text:t.value,done:cb.checked})})});
+    return r;
+  }
+  const arr=getPath(doc(key),path);
+  if(Array.isArray(arr)) for(const it of arr) wrap.append(row(it));
+  wrap.append(row(null));
+  return wrap;
+}
+function epi(i){const w=WISDOM[i];return h("div",{class:"epi"},w.k?w.k+". ":"",w.t,h("cite",{text:(w.s==="Jesus"||w.s==="Solomon")?w.r:SOURCE_LABEL[w.s]}))}
+const W=r=>WISDOM.findIndex(w=>w.r===r||w.k===r);
+function secHead(eyebrow,title,epiIdx,extra){return h("div",{class:"sec-head"},h("div",{class:"row"},h("div",null,h("div",{class:"eyebrow",text:eyebrow}),h("h2",{text:title})),extra||null),epiIdx!=null&&epiIdx>=0?epi(epiIdx):null)}
+
+/* ---------- metrics ---------- */
+function discVal(d,k){const x=d.disc[k]||{};if(k==="sleep") return sleepHours(x);if(k==="diet") return num(x.rating);return num(x.min)}
+function discMet(d,k,p){const v=discVal(d,k),t=num(p.targets[k]);return v>0&&v>=t}
+function discLogged(d,k){return discVal(d,k)>0}
+function dayStats(d,p){const tasks=(d.tasks||[]).filter(t=>t.text&&t.text.trim());const done=tasks.filter(t=>t.done).length;const met=DISC.filter(x=>discMet(d,x.k,p)).length;return{total:tasks.length,done,met}}
+
+/* ================= TODAY ================= */
+function viewToday(col){
+  const date=state.date,key="d-"+date,d=doc(key),p=doc("profile"),g=doc("goals");
+  keepSubs(["profile","goals",key,"d-"+addDays(date,-1),"w-"+isoWeek(date)]);
+  const isToday=date===todayStr();
+  const dateIn=h("input",{type:"date",class:"date-input",id:"pickDate",value:date,"aria-label":"Pick a date",onchange:e=>{if(e.target.value){state.date=e.target.value;render()}}});
+  col.append(h("div",{class:"top"},
+    h("div",{class:"when"},h("div",{class:"eyebrow",text:isToday?"Today":(date<todayStr()?"Looking back":"Planning ahead")}),h("h1",{text:longDate(date)}),h("span",{class:"phone-status"},h("span",{class:"status-pill"},h("i"),h("span",{text:""})))),
+    h("div",{class:"pager"},
+      h("button",{type:"button",class:"icon-btn","aria-label":"Previous day",onclick:()=>{state.date=addDays(state.date,-1);render()}},svg(ICONS.left)),
+      isToday?null:h("button",{type:"button",class:"chip-btn",text:"Today",onclick:()=>{state.date=todayStr();render()}}),
+      dateIn,
+      h("button",{type:"button",class:"icon-btn","aria-label":"Next day",onclick:()=>{state.date=addDays(state.date,1);render()}},svg(ICONS.right)))));
+
+  // score
+  const score=h("div",{class:"score"});
+  const paintScore=()=>{const s=dayStats(doc(key),doc("profile"));const met=doc(key).review.met;
+    score.replaceChildren(
+      h("div",null,h("b",{text:s.total?s.done+"/"+s.total:"0"}),h("span",{text:"Priorities done"})),
+      h("div",null,h("b",{text:s.met+"/5"}),h("span",{text:"Disciplines met"})),
+      h("div",null,h("b",{text:met==="yes"?"Yes":met==="partly"?"Partly":met==="no"?"Not yet":"—"}),h("span",{text:"Successful day"})))};
+  paintScore();localHooks.push(k=>{if(k===key) paintScore()});
+  col.append(score);
+
+  // word for the day
+  const w=WISDOM[((dayNum(date)%WISDOM.length)+WISDOM.length)%WISDOM.length];
+  col.append(h("div",{class:"word"},h("div",{class:"eyebrow",text:"Word for the day"}),w.k?h("div",{class:"small muted",text:w.k}):null,h("q",{text:w.t}),h("div",{class:"src",text:(w.s==="Jesus"||w.s==="Solomon")?w.r+" · KJV":SOURCE_LABEL[w.s]+" · "+w.r}),h("div",{class:"apply",text:w.a})));
+
+  if(!p.mission&&!p.successDef&&!(g.items||[]).length){
+    col.append(h("div",{class:"note"},h("h3",{text:"Start with the end in mind"}),h("div",{text:"Write your life vision and goals first. Your daily priorities can then link to them, and your evening review will remind you what success means to you."}),h("div",{class:"actions"},h("button",{type:"button",class:"chip-btn primary",text:"Write my vision",onclick:()=>go("goals")}))));
+  }
+
+  // carry-over from last night
+  const prev=peekDay(addDays(date,-1));
+  const carry=prev&&prev.review&&prev.review.tomorrow&&prev.review.tomorrow.trim();
+  if(carry&&!(d.tasks||[]).some(t=>t.text&&t.text.trim()===carry)){
+    col.append(h("div",{class:"note"},h("div",{class:"eyebrow",text:"From last night's review"}),h("div",{text:"First priority: "+carry}),
+      h("div",{class:"actions"},h("button",{type:"button",class:"chip-btn primary",text:"Add as Essential",onclick:()=>{change(key,x=>{x.tasks=x.tasks||[];x.tasks.unshift({id:uid(),text:carry,tier:2,done:false,goal:""})});render()}}))));
+  }
+
+  // MORNING
+  const m=h("section",{class:"sec","aria-label":"Morning"});
+  m.append(secHead("Morning","Set the day",W("Proverbs 17:22")));
+  m.append(field("I'm grateful for…","Each line adds another.",(()=>{const l=growList(key,["gratitude"],"Something I'm thankful for",{numbered:true});l.id=fid(key,["gratitude"]);return l})()));
+  m.append(field("Today's affirmation",null,area(key,["affirmation"],"I am… / Today I will…")));
+  const succ=area(key,["success"],"Today is a success if I…",{label:"Today is a success if"});
+  m.append(field("What would make today a success?",p.successDef?"Your big-picture definition: "+p.successDef:null,succ));
+  col.append(m);
+
+  // PRIORITIES
+  const pr=h("section",{class:"sec","aria-label":"Priorities"});
+  const sortBtn=h("button",{type:"button",class:"chip-btn",text:"Order by priority",onclick:()=>{change(key,x=>{x.tasks=(x.tasks||[]).filter(t=>t.text&&t.text.trim()).map((t,i)=>({t,i})).sort((a,b)=>(a.t.done-b.t.done)||(a.t.tier-b.t.tier)||(a.i-b.i)).map(o=>o.t)});render()}});
+  pr.append(secHead("Intentions","Goals & priorities for today",W("Matthew 6:33"),sortBtn));
+  pr.append(h("div",{class:"tier-help"},[1,2,3,4].map(n=>h("div",null,h("span",{class:"tier t"+n,text:TIERS[n].n}),h("div",{style:"margin-top:5px",text:TIERS[n].d})))));
+  pr.append(taskList(key,g));
+  col.append(pr);
+
+  // DISCIPLINES
+  const ds=h("section",{class:"sec","aria-label":"Personal development"});
+  ds.append(secHead("Personal development","Daily disciplines",W("Luke 2:52")));
+  const grid=h("div",{class:"disc"});
+  const badges={};
+  const badge=k=>{const b=h("span",{class:"met"});badges[k]=b;return b};
+  const paintBadges=()=>{const dd=doc(key),pp=doc("profile");for(const x of DISC){const b=badges[x.k];if(!b) continue;const on=discMet(dd,x.k,pp);b.classList.toggle("on",on);b.textContent=on?"Target met":"Target "+pp.targets[x.k]+(x.u.startsWith("/")?"":" ")+x.u}};
+  localHooks.push(k=>{if(k===key) paintBadges()});
+  grid.append(h("div",{class:"panel"},h("div",{class:"disc-head"},h("h3",{text:"Study"}),badge("study")),
+    h("div",{class:"inline"},numInput(key,["disc","study","min"],"Study minutes"),h("label",{text:"minutes"})),
+    area(key,["disc","study","note"],"What I studied or read",{label:"What I studied"})));
+  grid.append(h("div",{class:"panel"},h("div",{class:"disc-head"},h("h3",{text:"Prayer"}),badge("prayer")),
+    h("div",{class:"inline"},numInput(key,["disc","prayer","min"],"Prayer minutes"),h("label",{text:"minutes"})),
+    area(key,["disc","prayer","note"],"Prayer focus, requests, answers",{label:"Prayer notes"})));
+  const water=h("b",{text:String(d.disc.diet.water||0)});
+  const setWater=n=>{change(key,x=>{x.disc.diet.water=Math.max(0,(x.disc.diet.water||0)+n)});water.textContent=String(doc(key).disc.diet.water)};
+  grid.append(h("div",{class:"panel"},h("div",{class:"disc-head"},h("h3",{text:"Diet"}),badge("diet")),
+    h("div",{class:"lbl small muted",text:"How well did I eat? (1–5)"}),dots(key,["disc","diet","rating"],5,"Diet rating",paintBadges),
+    h("div",{class:"stepper"},h("button",{type:"button","aria-label":"One less glass of water",onclick:()=>setWater(-1),text:"−"}),water,h("button",{type:"button","aria-label":"One more glass of water",onclick:()=>setWater(1),text:"+"}),h("span",{class:"small muted",text:"glasses of water · goal "+p.targets.water})),
+    area(key,["disc","diet","note"],"Meals and notes",{label:"Diet notes"})));
+  grid.append(h("div",{class:"panel"},h("div",{class:"disc-head"},h("h3",{text:"Exercise"}),badge("exercise")),
+    h("div",{class:"inline"},numInput(key,["disc","exercise","min"],"Exercise minutes"),h("label",{text:"minutes"})),
+    area(key,["disc","exercise","type"],"Walk, weights, run…",{label:"Exercise type"})));
+  const hrs=h("span",{class:"num"});
+  const paintHrs=()=>{const v=sleepHours(doc(key).disc.sleep);hrs.textContent=v?v+" hours of sleep":"Enter bedtime and wake time"};
+  const timeIn=(f,label)=>{const i=h("input",{type:"time",id:fid(key,["disc","sleep",f]),value:d.disc.sleep[f]||"","aria-label":label});i.addEventListener("input",()=>{change(key,x=>{x.disc.sleep[f]=i.value});paintHrs()});return i};
+  grid.append(h("div",{class:"panel"},h("div",{class:"disc-head"},h("h3",{text:"Sleep"}),badge("sleep")),
+    h("div",{class:"pair"},h("div",null,h("label",{text:"Went to bed"}),timeIn("bed","Bedtime")),h("div",null,h("label",{text:"Woke up"}),timeIn("wake","Wake time"))),
+    h("div",{class:"small muted"},hrs),h("div",{class:"lbl small muted",text:"Sleep quality (1–5)"}),dots(key,["disc","sleep","quality"],5,"Sleep quality")));
+  paintHrs();paintBadges();
+  ds.append(grid);
+  col.append(ds);
+
+  // EVENING
+  const ev=h("section",{class:"sec","aria-label":"Evening review"});
+  ev.append(secHead("Evening","Review the day",W("Law of Reflection")));
+  const seg=h("div",{class:"seg",role:"group","aria-label":"Did I meet my definition of success?"});
+  const paintSeg=()=>{const v=doc(key).review.met;[...seg.children].forEach(b=>b.classList.toggle("on",b.dataset.v===v))};
+  for(const [v,n] of [["yes","Yes"],["partly","Partly"],["no","Not today"]]) seg.append(h("button",{type:"button",class:v,"data-v":v,text:n,onclick:()=>{const cur=doc(key).review.met;change(key,x=>{x.review.met=cur===v?"":v});paintSeg();paintScore()}}));
+  paintSeg();
+  ev.append(h("div",{class:"field"},h("div",{class:"lbl",text:"Did I live up to today's definition of success?"}),d.success?h("div",{class:"epi",text:"“"+d.success+"”"}):null,seg));
+  ev.append(field("Wins today",null,(()=>{const l=growList(key,["review","wins"],"Something that went well");l.id=fid(key,["review","wins"]);return l})()));
+  // drift
+  const chips=h("div",{class:"chips"});
+  const drift=(p.drift||[]).filter(s=>s&&s.trim());
+  const paintChips=()=>{const hit=doc(key).review.driftHit||[];[...chips.querySelectorAll(".chip[data-s]")].forEach(c=>{const on=hit.includes(c.dataset.s);c.classList.toggle("on",on);c.setAttribute("aria-pressed",String(on))})};
+  for(const s of drift) chips.append(h("button",{type:"button",class:"chip","data-s":s,text:s,onclick:()=>{change(key,x=>{const a=x.review.driftHit||[];const i=a.indexOf(s);if(i>=0) a.splice(i,1);else a.push(s);x.review.driftHit=a});paintChips()}}));
+  chips.append(h("button",{type:"button",class:"chip add",text:drift.length?"Edit my drift signals":"Set up my drift signals",onclick:()=>{go("goals");setTimeout(()=>{const el=document.getElementById("drift-signals");el&&el.scrollIntoView({block:"start"})},50)}}));
+  paintChips();
+  ev.append(h("div",{class:"field"},h("div",{class:"lbl",text:"Where did I lose sight of my objectives?"}),h("div",{class:"hint",text:"Tap any warning sign that showed up today."}),chips,area(key,["review","drift"],"What pulled me off course, and when?",{label:"What pulled me off course"})));
+  ev.append(field("What I learned / what I'll do differently",null,area(key,["review","lesson"],"Next time I will…")));
+  ev.append(field("Tomorrow's first priority","It will be waiting for you tomorrow morning.",area(key,["review","tomorrow"],"The first thing I'll do tomorrow")));
+  col.append(ev);
+}
+
+function taskList(key,g){
+  const goalsActive=(g.items||[]).filter(x=>x.title&&x.title.trim()&&x.status!=="done"&&(x.horizon==="short"||x.horizon==="mid"));
+  const wrap=h("div",{class:"tasklist"});
+  function row(t){
+    const isNew=!t;let tier=t?t.tier||3:3;let id=t?t.id:uid();
+    const r=h("div",{class:"task t"+tier+(isNew?" blank":"")+(t&&t.done?" done":"")});
+    const cb=h("input",{type:"checkbox",class:"check","aria-label":"Done",checked:!!(t&&t.done)});
+    const ta=h("textarea",{rows:1,placeholder:isNew?"Add an intention or task…":"","aria-label":"Task",value:t?t.text:""});
+    const pill=h("button",{type:"button",class:"tier t"+tier,text:TIERS[tier].n,"aria-label":"Priority: "+TIERS[tier].n+". Tap to change."});
+    const find=x=>(x.tasks||[]).findIndex(z=>z.id===id);
+    const ensure=x=>{x.tasks=x.tasks||[];let i=find(x);if(i<0){x.tasks.push({id,text:ta.value,tier,done:cb.checked,goal:sel?sel.value:""});i=x.tasks.length-1}return x.tasks[i]};
+    pill.addEventListener("click",()=>{tier=tier%4+1;pill.className="tier t"+tier;pill.textContent=TIERS[tier].n;pill.setAttribute("aria-label","Priority: "+TIERS[tier].n+". Tap to change.");r.className=r.className.replace(/\bt[1-4]\b/,"t"+tier);if(!r.classList.contains("blank")) change(key,x=>{ensure(x).tier=tier})});
+    let sel=null;
+    if(goalsActive.length){
+      sel=h("select",{"aria-label":"Linked goal"},h("option",{value:"",text:"Link to a goal…"}),goalsActive.map(x=>h("option",{value:x.id,text:x.title})));
+      sel.value=t&&t.goal&&goalsActive.some(x=>x.id===t.goal)?t.goal:"";
+      sel.addEventListener("change",()=>{if(!r.classList.contains("blank")) change(key,x=>{ensure(x).goal=sel.value})});
+    }
+    ta.addEventListener("input",()=>{autosize(ta);
+      if(r.classList.contains("blank")){ if(!ta.value.trim()) return; r.classList.remove("blank");ta.placeholder="";change(key,x=>{ensure(x)});wrap.append(row(null));return; }
+      change(key,x=>{ensure(x).text=ta.value})});
+    ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();const nx=r.nextElementSibling;if(nx) nx.querySelector("textarea").focus()}});
+    ta.addEventListener("blur",()=>{if(!r.classList.contains("blank")&&!ta.value.trim()){change(key,x=>{const i=find(x);if(i>=0) x.tasks.splice(i,1)});r.remove()}});
+    cb.addEventListener("change",()=>{r.classList.toggle("done",cb.checked);if(!r.classList.contains("blank")) change(key,x=>{ensure(x).done=cb.checked})});
+    r.append(cb,ta,h("div",{class:"meta"},pill,sel));
+    return r;
+  }
+  for(const t of (doc(key).tasks||[])) if(t&&t.text&&t.text.trim()) wrap.append(row(t));
+  wrap.append(row(null));
+  return wrap;
+}
+
+/* ================= WEEK ================= */
+function viewWeek(col){
+  const mon=state.week,wk=isoWeek(mon),key="w-"+wk,w=doc(key),p=doc("profile");
+  keepSubs(["profile","goals",key]);
+  const days=[...Array(7)].map((_,i)=>addDays(mon,i));
+  watchRange(days[0],days[6]);
+  const thisWeek=mon===mondayOf(todayStr());
+  col.append(h("div",{class:"top"},
+    h("div",{class:"when"},h("div",{class:"eyebrow",text:"Week "+wk.split("-W")[1]+(thisWeek?" · This week":"")}),h("h1",{text:shortDate(days[0])+" – "+shortDate(days[6])}),h("span",{class:"phone-status"},h("span",{class:"status-pill"},h("i"),h("span")))),
+    h("div",{class:"pager"},
+      h("button",{type:"button",class:"icon-btn","aria-label":"Previous week",onclick:()=>{state.week=addDays(state.week,-7);render()}},svg(ICONS.left)),
+      thisWeek?null:h("button",{type:"button",class:"chip-btn",text:"This week",onclick:()=>{state.week=mondayOf(todayStr());render()}}),
+      h("button",{type:"button",class:"icon-btn","aria-label":"Next week",onclick:()=>{state.week=addDays(state.week,7);render()}},svg(ICONS.right)))));
+  const strip=h("div",{class:"strip"});
+  for(const ds of days){const d=peekDay(ds);const s=d?dayStats(d,p):{total:0,done:0,met:0};const met=d&&d.review?d.review.met:"";
+    strip.append(h("button",{type:"button",class:"daycell"+(ds===todayStr()?" today":""),"aria-label":longDate(ds),onclick:()=>{state.date=ds;go("today")}},
+      h("span",{class:"dn",text:parseD(ds).toLocaleDateString(undefined,{weekday:"short"})}),h("span",{class:"dd",text:String(parseD(ds).getDate())}),
+      h("span",{class:"mark "+(met||""),title:met?"Successful day: "+met:"Not reviewed"}),
+      h("span",{class:"sm",text:s.total?s.done+"/"+s.total:"–"}),h("span",{class:"sm",text:s.met+"/5"})));}
+  col.append(h("div",{class:"sec"},strip,h("div",{class:"legend-row"},h("span",null,h("i",{style:"background:var(--good)"}),"Successful day"),h("span",null,h("i",{style:"background:var(--warn)"}),"Partly"),h("span",null,"Rows: priorities done, disciplines met"))));
+
+  const rs=h("section",{class:"sec"});
+  rs.append(secHead("Plan","Big rocks by role",W("Big Rocks")));
+  const roles=(p.roles||[]).filter(r=>r&&r.trim());
+  if(!roles.length){
+    rs.append(h("div",{class:"note"},h("div",{text:"Add your roles (for example disciple, spouse, parent, author) in Vision & Goals. Each role then gets its own big rocks here."}),h("div",{class:"actions"},h("button",{type:"button",class:"chip-btn primary",text:"Add my roles",onclick:()=>go("goals")}))));
+  } else {
+    const g=h("div",{class:"roles"});
+    for(const role of roles) g.append(h("div",{class:"panel"},h("h3",{text:role}),growList(key,["rocks",role],"A big rock for this role",{check:true})));
+    rs.append(g);
+  }
+  col.append(rs);
+
+  const sw=h("section",{class:"sec"});
+  sw.append(secHead("Renewal","Sharpen the saw",W("Habit 7 · Sharpen the Saw")));
+  const sg=h("div",{class:"saw"});
+  for(const [k,n,ph] of [["physical","Physical","Exercise, rest, nutrition"],["mental","Mental","Reading, learning, planning"],["spiritual","Spiritual","Prayer, scripture, worship"],["social","Social","Family, friends, service"]])
+    sg.append(field(n,null,area(key,["saw",k],ph,{label:n+" renewal"})));
+  sw.append(sg);col.append(sw);
+
+  const rv=h("section",{class:"sec"});
+  rv.append(secHead("Review","Weekly review",W("Proverbs 4:25–26")));
+  rv.append(field("What went well this week?",null,area(key,["review","well"],"Wins, answered prayers, progress",{big:true})));
+  rv.append(field("What will I improve?",null,area(key,["review","improve"],"Where I drifted and what I'll change",{big:true})));
+  rv.append(field("Focus for next week",null,area(key,["review","focus"],"The one thing that matters most next week")));
+  col.append(rv);
+}
+
+/* ================= GOALS ================= */
+function viewGoals(col){
+  const p=doc("profile"),g=doc("goals");
+  keepSubs(["profile","goals"]);
+  col.append(h("div",{class:"top"},h("div",{class:"when"},h("div",{class:"eyebrow",text:"Begin with the end in mind"}),h("h1",{text:"Vision & Goals"}),h("span",{class:"phone-status"},h("span",{class:"status-pill"},h("i"),h("span"))))));
+  const v=h("section",{class:"sec"});
+  v.append(secHead("Life vision","Who I am becoming",W("Proverbs 29:18")));
+  v.append(field("Personal mission statement","Why you're here and what you live for. Read it every morning.",area("profile",["mission"],"My mission is to…",{big:true})));
+  v.append(field("My vision","Describe your life ten years from now as if it has already happened.",area("profile",["becoming"],"In ten years I am…",{big:true})));
+  v.append(field("Core values",null,(()=>{const l=growList("profile",["values"],"A value I live by",{numbered:true});l.id="profile-values";return l})()));
+  const rolesList=growList("profile",["roles"],"A role I hold");rolesList.id="profile-roles";
+  const roleSug=h("div",{class:"chips"});
+  const paintRoleSug=()=>{const have=(doc("profile").roles||[]).map(s=>s.trim().toLowerCase());roleSug.replaceChildren(...ROLE_SUGGEST.filter(s=>!have.includes(s.toLowerCase())).map(s=>h("button",{type:"button",class:"chip add",text:"+ "+s,onclick:()=>{change("profile",x=>{x.roles=(x.roles||[]).filter(r=>r&&r.trim());x.roles.push(s)});render()}})))};
+  paintRoleSug();
+  v.append(h("div",{class:"field"},h("label",{for:"profile-roles",text:"My roles"}),h("div",{class:"hint",text:"Each role gets its own big rocks on the Week page."}),rolesList,roleSug));
+  v.append(field("What success means to me","Shown each morning next to “What would make today a success?”",area("profile",["successDef"],"I am successful when…",{big:true})));
+  const driftList=growList("profile",["drift"],"A sign I'm drifting");driftList.id="profile-drift";
+  const dSug=h("div",{class:"chips"});
+  const paintDSug=()=>{const have=(doc("profile").drift||[]).map(s=>s.trim().toLowerCase());dSug.replaceChildren(...DRIFT_SUGGEST.filter(s=>!have.includes(s.toLowerCase())).map(s=>h("button",{type:"button",class:"chip add",text:"+ "+s,onclick:()=>{change("profile",x=>{x.drift=(x.drift||[]).filter(r=>r&&r.trim());x.drift.push(s)});render()}})))};
+  paintDSug();
+  v.append(h("div",{class:"field",id:"drift-signals"},h("label",{for:"profile-drift",text:"Signs I'm losing sight of my objectives"}),h("div",{class:"hint",text:"These become one-tap checks in your evening review."}),driftList,dSug));
+  col.append(v);
+
+  const gs=h("section",{class:"sec"});
+  const items=g.items||[];
+  const tabs=h("div",{class:"htabs",role:"group","aria-label":"Goal horizon"});
+  for(const hz of HORIZONS){const c=items.filter(x=>x.horizon===hz.k&&x.title&&x.title.trim()).length;
+    tabs.append(h("button",{type:"button","aria-pressed":String(state.horizon===hz.k),onclick:()=>{state.horizon=hz.k;try{localStorage.setItem(LS+"ui:horizon",hz.k)}catch(e){}render()}},hz.n,h("span",{class:"c",text:String(c)})));}
+  gs.append(secHead("Goals","Long, mid and short range",W("Luke 14:28")),tabs);
+  const hz=HORIZONS.find(x=>x.k===state.horizon)||HORIZONS[2];
+  gs.append(h("div",{class:"hint",text:hz.span+". "+hz.ph}));
+  const list=h("div",{class:"sec",style:"gap:10px"});
+  for(const it of items.filter(x=>x.horizon===hz.k)) list.append(goalCard(it));
+  if(!items.some(x=>x.horizon===hz.k)) list.append(h("div",{class:"hint",text:"No "+hz.n.toLowerCase()+" goals yet."}));
+  gs.append(list);
+  gs.append(h("div",null,h("button",{type:"button",class:"chip-btn primary",text:"+ Add a "+hz.n.toLowerCase()+" goal",onclick:()=>{const id=uid();change("goals",x=>{x.items=x.items||[];x.items.push({id,horizon:hz.k,title:"",area:"Faith",why:"",target:"",next:"",progress:0,status:"active",parent:""})});state.openGoal=id;render();setTimeout(()=>{const el=document.getElementById("goal-title-"+id);el&&el.focus()},60)}})));
+  col.append(gs);
+}
+function goalCard(it){
+  const open=state.openGoal===it.id;
+  const items=doc("goals").items;
+  const upd=(f,v)=>change("goals",x=>{const t=x.items.find(z=>z.id===it.id);if(t) t[f]=v});
+  const parentOpts=items.filter(z=>z.id!==it.id&&z.title&&z.title.trim()&&((it.horizon==="short"&&(z.horizon==="mid"||z.horizon==="long"))||(it.horizon==="mid"&&z.horizon==="long")));
+  const parent=items.find(z=>z.id===it.parent);
+  const card=h("div",{class:"goal"+(it.status==="done"?" status-done":"")});
+  const pct=h("span",{class:"pct",text:(it.progress||0)+"%"});const barI=h("i",{style:"width:"+(it.progress||0)+"%"});
+  const titleSpan=h("span",{class:"gt",text:it.title||"Untitled goal"});
+  card.append(h("button",{type:"button",class:"gsum","aria-expanded":String(open),onclick:()=>{state.openGoal=open?null:it.id;render()}},
+    titleSpan,pct,h("div",{class:"bar"},barI),
+    h("div",{class:"gm"},h("span",{text:it.area||""}),it.target?h("span",{text:"Target "+shortDate(it.target)+", "+parseD(it.target).getFullYear()}):null,parent?h("span",{text:"Serves: "+parent.title}):null,it.status!=="active"?h("span",{text:it.status==="done"?"Achieved":"Paused"}):null)));
+  if(open){
+    const b=h("div",{class:"gbody"});
+    const t=h("input",{type:"text",id:"goal-title-"+it.id,value:it.title||"",placeholder:"Name the goal","aria-label":"Goal"});t.addEventListener("input",()=>{upd("title",t.value);titleSpan.textContent=t.value||"Untitled goal"});
+    b.append(field("Goal",null,t));
+    const why=h("textarea",{id:"goal-why-"+it.id,rows:1,value:it.why||"",placeholder:"Why this matters to me"});why.addEventListener("input",()=>{autosize(why);upd("why",why.value)});
+    b.append(field("Why it matters",null,why));
+    const areaSel=h("select",{id:"goal-area-"+it.id},AREAS.map(a=>h("option",{value:a,text:a})));areaSel.value=it.area||"Faith";areaSel.addEventListener("change",()=>upd("area",areaSel.value));
+    const tgt=h("input",{type:"date",id:"goal-target-"+it.id,value:it.target||""});tgt.addEventListener("change",()=>upd("target",tgt.value));
+    const st=h("select",{id:"goal-status-"+it.id},[["active","Active"],["done","Achieved"],["paused","Paused"]].map(([v,n])=>h("option",{value:v,text:n})));st.value=it.status||"active";st.addEventListener("change",()=>{upd("status",st.value);card.classList.toggle("status-done",st.value==="done")});
+    b.append(h("div",{class:"grid2"},field("Life area",null,areaSel),field("Target date",null,tgt),field("Status",null,st)));
+    if(parentOpts.length){const ps=h("select",{id:"goal-parent-"+it.id},h("option",{value:"",text:"None"}),parentOpts.map(z=>h("option",{value:z.id,text:z.title})));ps.value=it.parent||"";ps.addEventListener("change",()=>upd("parent",ps.value));b.append(field("Serves this bigger goal",null,ps))}
+    const nx=h("input",{type:"text",id:"goal-next-"+it.id,value:it.next||"",placeholder:"The very next action"});nx.addEventListener("input",()=>upd("next",nx.value));
+    b.append(field("Next step",null,nx));
+    const rg=h("input",{type:"range",id:"goal-prog-"+it.id,min:"0",max:"100",step:"5",value:String(it.progress||0)});rg.addEventListener("input",()=>{const v=Number(rg.value);upd("progress",v);pct.textContent=v+"%";barI.style.width=v+"%"});
+    b.append(field("Progress",null,rg));
+    const del=h("button",{type:"button",class:"danger",text:"Delete goal"});
+    del.addEventListener("click",()=>{if(!del.classList.contains("armed")){del.classList.add("armed");del.textContent="Tap again to delete";setTimeout(()=>{del.classList.remove("armed");del.textContent="Delete goal"},3500);return}change("goals",x=>{x.items=x.items.filter(z=>z.id!==it.id)});state.openGoal=null;render()});
+    b.append(h("div",null,del));
+    card.append(b);
+  }
+  return card;
+}
+
+/* ================= GROWTH ================= */
+function viewGrowth(col){
+  const p=doc("profile");keepSubs(["profile","goals"]);
+  const end=todayStr(),start=addDays(end,-29);const days=[...Array(30)].map((_,i)=>addDays(start,i));
+  watchRange(start,end);
+  col.append(h("div",{class:"top"},h("div",{class:"when"},h("div",{class:"eyebrow",text:"Last 30 days"}),h("h1",{text:"Growth"}),h("span",{class:"phone-status"},h("span",{class:"status-pill"},h("i"),h("span"))))));
+  const dd=days.map(peekDay);
+  const s1=h("section",{class:"sec"});
+  s1.append(secHead("Consistency","Disciplines over 30 days",W("Law of Consistency")));
+  const tr=h("div",{class:"track"});
+  const cellsFor=fn=>h("div",{class:"cells"},dd.map((d,i)=>h("span",{class:"cell "+(d?fn(d):""),title:shortDate(days[i])})));
+  tr.append(h("div",{class:"trow"},h("span",{class:"tl",text:"Success"}),cellsFor(d=>d.review.met||"")));
+  for(const x of DISC) tr.append(h("div",{class:"trow"},h("span",{class:"tl",text:x.n}),cellsFor(d=>discMet(d,x.k,p)?"met":discLogged(d,x.k)?"part":"")));
+  s1.append(h("div",{style:"overflow-x:auto"},tr));
+  s1.append(h("div",{class:"legend-row"},h("span",null,h("i",{style:"background:var(--good)"}),"Target met"),h("span",null,h("i",{style:"background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)"}),"Logged, under target"),h("span",null,h("i",{style:"background:var(--sunk)"}),"Not logged"),h("span",null,"Oldest on the left, today on the right")));
+  const streak=k=>{let n=0;for(let i=dd.length-1;i>=0;i--){const d=dd[i];const ok=d&&(k==="success"?d.review.met==="yes":discMet(d,k,p));if(ok) n++;else if(i===dd.length-1) continue;else break}return n};
+  const stats=h("div",{class:"stats"});
+  const succ=dd.filter(d=>d&&d.review.met==="yes").length;
+  stats.append(h("div",null,h("b",{text:succ+" of 30"}),h("span",{text:"Successful days"})));
+  for(const x of DISC){const met=dd.filter(d=>d&&discMet(d,x.k,p)).length;const vals=dd.filter(d=>d&&discLogged(d,x.k)).map(d=>discVal(d,x.k));const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+    stats.append(h("div",null,h("b",{text:met+(met===1?" day":" days")}),h("span",{text:x.n+" · streak "+streak(x.k)+" · avg "+(Math.round(avg*10)/10)+(x.u.startsWith("/")?"":" ")+x.u})));}
+  s1.append(stats);col.append(s1);
+
+  const s2=h("section",{class:"sec"});
+  s2.append(secHead("Targets","Daily discipline targets",W("Law of Intentionality")));
+  const tg=h("div",{class:"targets"});
+  for(const [k,n,step] of [["study","Study (minutes)","5"],["prayer","Prayer (minutes)","5"],["exercise","Exercise (minutes)","5"],["sleep","Sleep (hours)","0.5"],["diet","Diet rating (1–5)","1"],["water","Water (glasses)","1"]]){
+    const i=numInput("profile",["targets",k],n,{step});tg.append(h("div",null,h("label",{for:i.id,text:n}),i));}
+  s2.append(tg);col.append(s2);
+
+  const s3=h("section",{class:"sec"});
+  s3.append(secHead("Your data","Backup & devices",null));
+  s3.append(h("div",{class:"panel"},
+    h("div",{text:"Everything you write is stored only on this iPad. The planner never sends your entries anywhere."}),
+    h("div",{class:"note",style:"background:var(--sunk)"},h("div",{class:"small",text:"If this iPad is lost or reset, entries go with it. Save a backup now and then: tap Save a backup, choose Save to Files, and pick iCloud Drive. You can restore it here any time."})),
+    h("div",{class:"actions",style:"display:flex;gap:8px;flex-wrap:wrap"},
+      h("button",{type:"button",class:"chip-btn primary",text:"Save a backup",onclick:exportBackup}),
+      h("button",{type:"button",class:"chip-btn",text:"Restore from backup",onclick:()=>$("#importFile").click()})),
+    h("div",{id:"importConfirm"})));
+  col.append(s3);
+}
+async function allDocs(){
+  const out={};
+  if(S.mode==="cloud"){try{const qs=await S.db.collection(S.base).get();for(const d of qs.docs) out[d.id]=d.data()}catch(e){}}
+  for(const k of lsKeys()){if(k.startsWith("ui:")) continue;const m=lsGet(k);if(m&&!out[k]) out[k]=m.data}
+  for(const k in S.cache) out[k]=S.cache[k];
+  return out;
+}
+async function exportBackup(){
+  const docs=await allDocs();
+  const data=JSON.stringify({app:"first-things-planner",version:1,exported:new Date().toISOString(),docs},null,1);
+  const name="first-things-backup-"+todayStr()+".json";
+  const file=new File([data],name,{type:"application/json"});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"First Things backup"});return}
+  }catch(e){if(e&&e.name==="AbortError") return}
+  const url=URL.createObjectURL(file);const a=h("a",{href:url,download:name});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast("Backup saved to Downloads");
+}
+$("#importFile").addEventListener("change",async e=>{
+  const f=e.target.files&&e.target.files[0];e.target.value="";if(!f) return;
+  let parsed;try{parsed=JSON.parse(await f.text())}catch(err){toast("That file isn't a planner backup.");return}
+  if(!parsed||parsed.app!=="first-things-planner"||!parsed.docs){toast("That file isn't a planner backup.");return}
+  const box=$("#importConfirm");if(!box) return;
+  const n=Object.keys(parsed.docs).length;
+  box.replaceChildren(h("div",{class:"note"},h("div",{text:"Restore "+n+" pages from the backup made "+new Date(parsed.exported).toLocaleDateString()+"? Pages in the backup replace the same pages here."}),
+    h("div",{class:"actions"},h("button",{type:"button",class:"chip-btn primary",text:"Restore",onclick:()=>{let i=0;for(const [k,v] of Object.entries(parsed.docs)){if(!/^(profile|goals|d-\d{4}-\d{2}-\d{2}|w-\d{4}-W\d{2})$/.test(k)) continue;S.cache[k]=mergeDefaults(defFor(k),v);S.ver[k]=(S.ver[k]||0)+1;lsSet(k,{data:S.cache[k],synced:false,ts:Date.now()});if(S.mode==="cloud") schedule(k,250*(i++));}toast("Backup restored");render()}}),
+      h("button",{type:"button",class:"chip-btn",text:"Cancel",onclick:()=>box.replaceChildren()}))));
+});
+
+/* ================= WISDOM ================= */
+function viewWisdom(col){
+  keepSubs(["profile","goals"]);
+  col.append(h("div",{class:"top"},h("div",{class:"when"},h("div",{class:"eyebrow",text:"Inspiration"}),h("h1",{text:"Wisdom"}),h("span",{class:"phone-status"},h("span",{class:"status-pill"},h("i"),h("span"))))));
+  col.append(h("div",{class:"hint",text:"Scripture is quoted from the King James Version. Maxwell and Covey entries summarize principles from their books in our own words."}));
+  const f=h("div",{class:"filters htabs",role:"group","aria-label":"Filter by source"});
+  for(const s of ["All",...SOURCES]) f.append(h("button",{type:"button","aria-pressed":String(state.wfilter===s),text:s==="All"?"All":SOURCE_LABEL[s],onclick:()=>{state.wfilter=s;render()}}));
+  col.append(f);
+  const l=h("div",{class:"wlist"});
+  for(const w of WISDOM.filter(w=>state.wfilter==="All"||w.s===state.wfilter))
+    l.append(h("article",{class:"wcard"},h("div",{class:"kind",text:SOURCE_LABEL[w.s]+(w.k?" · "+w.k:"")}),h("q",{text:w.t}),h("div",{class:"src",text:(w.s==="Jesus"||w.s==="Solomon")?w.r+" · KJV":w.r}),h("div",{class:"apply",text:w.a})));
+  col.append(l);
+}
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  S.booting=false;render();
+  try{if(navigator.storage&&navigator.storage.persist) await navigator.storage.persist()}catch(e){}
+  if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){try{await navigator.serviceWorker.register("sw.js")}catch(e){}}
+}
+boot();
+</script>
+</body>
+</html>
